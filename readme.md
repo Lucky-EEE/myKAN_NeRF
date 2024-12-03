@@ -8,7 +8,7 @@ pip install -r requirements
 请放在frame文件夹下，直接放图片
 
 # 训练模型
-python ./train/train.py
+运行train目录下的train.py
 
 # 三维重建
 还在写
