@@ -1,73 +1,62 @@
 import torch
 import numpy as np
 import kan
-from torch.utils.data import DataLoader
 
-# 设置设备为 GPU 或 CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# 加载训练好的模型
+# Load trained model
 model = kan.KAN(width=[15, 15, 15, 15, 15]).to(device)
 model.load_state_dict(torch.load(r'../model/model_state_dict.pth'))
 model.eval()
 
-# 生成射线的函数
-def generate_rays(camera_pose, points_3d):
-    """
-    给定相机位姿和3D点云，生成射线
-    """
-    rays = []
-    for point in points_3d:
-        # 使用相机的位姿矩阵将三维点投影到相机的视野内
-        ray_origin = camera_pose[:3, 3]  # 相机位置
-        point_tensor = torch.tensor(point, dtype=torch.float32, device=device)
-        ray_direction = point_tensor - ray_origin  # 射线方向
-        rays.append((ray_origin, ray_direction))
-    return rays
 
-# 基于射线对场景进行重建
-def reconstruct_3d_scene(model, camera_pose, points_3d, device):
-    """
-    使用训练好的NeRF模型进行三维重建
-    """
-    rays = generate_rays(camera_pose, points_3d)
+# Generate rays based on camera parameters
+def generate_rays(camera_pose, img_width, img_height, K):
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+    u, v = np.meshgrid(np.arange(img_width), np.arange(img_height))
+    u = u.flatten()
+    v = v.flatten()
+    dirs = np.stack([(u - cx) / fx, (v - cy) / fy, np.ones_like(u)], axis=-1)
+    R = camera_pose[:3, :3]
+    t = camera_pose[:3, 3]
+    ray_dirs = (R.T @ dirs.T).T
+    ray_origins = np.broadcast_to(t, ray_dirs.shape)
+    return ray_origins, ray_dirs
 
+
+# Reconstruct scene with batched inference
+def reconstruct_3d_scene(model, camera_pose, img_width, img_height, K, device, batch_size=1000):
+    ray_origins, ray_dirs = generate_rays(camera_pose, img_width, img_height, K)
+    ray_origins = torch.tensor(ray_origins, dtype=torch.float32, device=device)
+    ray_dirs = torch.tensor(ray_dirs, dtype=torch.float32, device=device)
+
+    num_rays = ray_origins.shape[0]
     reconstructed_points = []
-    for ray_origin, ray_direction in rays:
-        # 使用KAN模型进行推断
-        input_data = torch.cat([ray_origin.flatten(), ray_direction.flatten()]).unsqueeze(0).to(device)
-        output = model(input_data)
 
-        # 获取模型的预测结果（颜色和密度等）
-        color = output[:, :3].cpu().detach().numpy()  # 假设前三个输出为RGB
-        density = output[:, 3].cpu().detach().numpy()  # 假设第四个输出为密度
+    for i in range(0, num_rays, batch_size):
+        batch_origins = ray_origins[i:i + batch_size]
+        batch_dirs = ray_dirs[i:i + batch_size]
+        input_data = torch.cat([batch_origins, batch_dirs], dim=-1)
+        with torch.no_grad():
+            output = model(input_data)
+        reconstructed_points.append(output.cpu().numpy())
 
-        reconstructed_points.append((ray_origin.cpu().numpy(), ray_direction.cpu().numpy(), color, density))
+    return np.concatenate(reconstructed_points, axis=0)
 
-    return reconstructed_points
 
-# 渲染和显示重建的场景
+# Render the reconstructed scene (placeholder)
 def render_scene(reconstructed_points):
-    """
-    根据重建的点，渲染最终图像
-    """
-    # 这里你可以实现一个简单的渲染函数，将3D点投影到2D图像上
-    # 使用颜色和密度等信息合成最终图像
+    # Implement rendering logic as needed
     pass
 
-# 主函数
+
+# Main execution
 def main():
-    # 假设你已经加载了相机位姿和点云数据
-    camera_pose = np.eye(4)  # 相机位姿矩阵 (此处为示例，替换为实际值)
-    points_3d = np.random.rand(100, 3)  # 100个3D点（示例数据，替换为实际点云）
+    camera_pose = np.eye(4)  # Replace with actual camera pose
+    img_width, img_height = 1920, 1080  # Replace with actual image dimensions
+    K = np.array([[5851.35, 0, 960], [0, 5851.35, 540], [0, 0, 1]])  # Replace with actual intrinsics
 
-    # 将相机位姿矩阵转换为tensor
-    camera_pose_tensor = torch.tensor(camera_pose, dtype=torch.float32).to(device)
-
-    # 使用训练后的模型进行三维重建
-    reconstructed_points = reconstruct_3d_scene(model, camera_pose_tensor, points_3d, device)
-
-    # 渲染并显示重建的场景
+    reconstructed_points = reconstruct_3d_scene(model, camera_pose, img_width, img_height, K, device)
     render_scene(reconstructed_points)
 
 
