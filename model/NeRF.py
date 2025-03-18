@@ -170,21 +170,3 @@ def generate_new_views(model, rays_origin, rays_direction, num_new_views=5):
         rgb_new = outputs['rgb_fine']  # 使用精细网络的输出
         
     return new_origins, new_directions, rgb_new
-
-# 示例训练循环
-model = NeRF()
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-5)
-
-for epoch in range(num_epochs):
-    optimizer.zero_grad()
-    outputs = model(rays_origin, rays_direction)
-    loss = model.compute_loss(outputs, target_rgb)['total_loss']
-    loss.backward()
-    optimizer.step()
-
-    # 每隔一定周期生成新视角
-    if epoch % 50 == 0 and epoch > 0:
-        new_origins, new_directions, rgb_new = generate_new_views(model, rays_origin, rays_direction)
-        rays_origin = torch.cat([rays_origin, new_origins], dim=0)
-        rays_direction = torch.cat([rays_direction, new_directions], dim=0)
-        target_rgb = torch.cat([target_rgb, rgb_new], dim=0)

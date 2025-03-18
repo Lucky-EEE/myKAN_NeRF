@@ -1,0 +1,10 @@
+numpy
+torch
+opencv-python
+open3d
+scikit-learn
+pyrender
+trimesh
+imageio
+scipy
+ipython

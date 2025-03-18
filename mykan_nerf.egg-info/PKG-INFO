@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: mykan_nerf
+Version: 0.1
+Requires-Dist: numpy
+Requires-Dist: torch
+Requires-Dist: opencv-python
+Requires-Dist: open3d
+Requires-Dist: scikit-learn
+Requires-Dist: pyrender
+Requires-Dist: trimesh
+Requires-Dist: imageio
+Requires-Dist: scipy
+Requires-Dist: ipython
