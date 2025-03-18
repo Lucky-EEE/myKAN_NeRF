@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from sklearn.preprocessing import MinMaxScaler
 import sys
 import os
+from tqdm import tqdm  # 导入 tqdm
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model.NeRF import NeRF, generate_new_views
@@ -112,7 +113,8 @@ def train_nerf(model, train_dataloader, optimizer, device, num_epochs=10,
         total_sigma_loss = 0
         total_smooth_loss = 0
         
-        for batch_idx, batch in enumerate(train_dataloader):
+        # 使用 tqdm 包装数据加载器
+        for batch_idx, batch in enumerate(tqdm(train_dataloader, desc=f"Epoch {epoch+1}/{num_epochs}")):
             rays_origin = batch['rays_origin'].to(device)
             rays_direction = batch['rays_direction'].to(device)
             target_rgb = batch['target_rgb'].to(device)

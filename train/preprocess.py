@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm  # 导入 tqdm
 
 
 # Load images in parallel
@@ -17,7 +18,7 @@ def load_images(frame_folder):
             return None
 
     with ThreadPoolExecutor() as executor:
-        images = list(executor.map(load_image, image_paths))
+        images = list(tqdm(executor.map(load_image, image_paths), total=len(image_paths), desc="Loading images"))
 
     # Filter out failed loads
     images = [img for img in images if img is not None]
@@ -29,7 +30,7 @@ def extract_features(images):
     sift = cv2.SIFT_create()
     keypoints_list, descriptors_list = [], []
 
-    for image in images:
+    for image in tqdm(images, desc="Extracting features"):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         keypoints, descriptors = sift.detectAndCompute(gray, None)
         keypoints_list.append(keypoints)
@@ -45,7 +46,7 @@ def match_features(descriptors_list):
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     matches_list = []
 
-    for i in range(len(descriptors_list) - 1):
+    for i in tqdm(range(len(descriptors_list) - 1), desc="Matching features"):
         matches = flann.knnMatch(descriptors_list[i], descriptors_list[i + 1], k=2)
         # Lowe's ratio test
         good_matches = [m for m, n in matches if m.distance < 0.75 * n.distance]
