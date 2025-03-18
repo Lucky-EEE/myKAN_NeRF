@@ -80,20 +80,15 @@ class NeRF(nn.Module):
         z_vals = bins[:-1] + (bins[1:] - bins[:-1]) * torch.rand_like(bins[:-1])  # [N]
         z_vals = z_vals.unsqueeze(0).expand(batch_size, -1)  # [B, N]
         
-        # 将 z_vals 扩展为 [B, N, 1]，使其可以与方向向量相乘
+        # 准备张量维度
+        origins = origins.unsqueeze(1).expand(-1, num_samples, -1)  # [B, N, 3]
+        directions = directions.unsqueeze(1).expand(-1, num_samples, -1)  # [B, N, 3]
         z_vals = z_vals.unsqueeze(-1)  # [B, N, 1]
         
-        # 将 origins 和 directions 扩展为 [B, 1, 3]
-        origins = origins.unsqueeze(1)  # [B, 1, 3]
-        directions = directions.unsqueeze(1)  # [B, 1, 3]
-        
         # 计算采样点的3D坐标
-        # origins: [B, 1, 3]
-        # directions: [B, 1, 3]
-        # z_vals: [B, N, 1]
-        # 广播后：
         # origins: [B, N, 3]
-        # directions * z_vals: [B, N, 3]
+        # directions: [B, N, 3]
+        # z_vals: [B, N, 1]
         points = origins + directions * z_vals  # [B, N, 3]
         
         return z_vals.squeeze(-1), points  # 返回 z_vals: [B, N], points: [B, N, 3]
