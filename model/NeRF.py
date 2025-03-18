@@ -67,11 +67,21 @@ class NeRF(nn.Module):
 
     def _stratified_sample(self, origins, directions, num_samples):
         """改进的分层采样，加入随机扰动"""
-        # 确保输入张量具有正确的维度
+        # 打印输入张量的形状以便调试
+        print(f"Input shapes - origins: {origins.shape}, directions: {directions.shape}")
+        
+        # 确保输入张量维度正确
+        while origins.dim() > 2:
+            origins = origins.squeeze(1)  # 移除多余的维度
+        while directions.dim() > 2:
+            directions = directions.squeeze(1)  # 移除多余的维度
+        
         if origins.dim() == 1:
             origins = origins.unsqueeze(0)  # [3] -> [1, 3]
         if directions.dim() == 1:
             directions = directions.unsqueeze(0)  # [3] -> [1, 3]
+        
+        print(f"After reshape - origins: {origins.shape}, directions: {directions.shape}")
         
         batch_size = origins.shape[0]
         
@@ -85,11 +95,12 @@ class NeRF(nn.Module):
         directions = directions.unsqueeze(1).expand(-1, num_samples, -1)  # [B, N, 3]
         z_vals = z_vals.unsqueeze(-1)  # [B, N, 1]
         
+        print(f"Before sampling - origins: {origins.shape}, directions: {directions.shape}, z_vals: {z_vals.shape}")
+        
         # 计算采样点的3D坐标
-        # origins: [B, N, 3]
-        # directions: [B, N, 3]
-        # z_vals: [B, N, 1]
         points = origins + directions * z_vals  # [B, N, 3]
+        
+        print(f"Output shapes - z_vals: {z_vals.squeeze(-1).shape}, points: {points.shape}")
         
         return z_vals.squeeze(-1), points  # 返回 z_vals: [B, N], points: [B, N, 3]
 
