@@ -67,9 +67,26 @@ class NeRF(nn.Module):
 
     def _stratified_sample(self, origins, directions, num_samples):
         """改进的分层采样，加入随机扰动"""
+        # 确保输入张量具有正确的维度
+        if origins.dim() == 1:
+            origins = origins.unsqueeze(0)  # 添加批次维度
+        if directions.dim() == 1:
+            directions = directions.unsqueeze(0)  # 添加批次维度
+        
+        # 如果输入是2D张量，添加采样维度
+        if origins.dim() == 2:
+            origins = origins.unsqueeze(1)  # [B, 1, 3]
+        if directions.dim() == 2:
+            directions = directions.unsqueeze(1)  # [B, 1, 3]
+
+        # 生成采样点
         bins = torch.linspace(self.near, self.far, num_samples + 1).to(origins.device)
         z_vals = bins[:-1] + (bins[1:] - bins[:-1]) * torch.rand_like(bins[:-1])
-        points = origins[:, None, :] + directions[:, None, :] * z_vals[:, :, None]
+        z_vals = z_vals.expand(origins.shape[0], num_samples)  # [B, N]
+        
+        # 计算采样点的3D坐标
+        points = origins + directions * z_vals.unsqueeze(-1)  # [B, N, 3]
+        
         return z_vals, points
 
     def _compute_weights(self, sigma, z_vals):
